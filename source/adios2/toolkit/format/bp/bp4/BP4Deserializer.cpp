@@ -92,8 +92,7 @@ void BP4Deserializer::ParseMetadataIndex(const BufferSTL &bufferSTL,
 
         // BP version
         position = m_BPVersionPosition;
-        m_Minifooter.Version = helper::ReadValue<uint8_t>(
-            buffer, position, m_Minifooter.IsLittleEndian);
+        m_Minifooter.Version = helper::ReadValue<uint8_t>(buffer, position);
         if (m_Minifooter.Version != 4)
         {
             throw std::runtime_error(
@@ -104,8 +103,7 @@ void BP4Deserializer::ParseMetadataIndex(const BufferSTL &bufferSTL,
 
         // Writer active flag
         position = m_ActiveFlagPosition;
-        const char activeChar = helper::ReadValue<uint8_t>(
-            buffer, position, m_Minifooter.IsLittleEndian);
+        const char activeChar = helper::ReadValue<uint8_t>(buffer, position);
         m_WriterIsActive = (activeChar == '\1' ? true : false);
 
         // move position to first row
@@ -641,8 +639,7 @@ bool BP4Deserializer::ReadActiveFlag(std::vector<char> &buffer)
     }
     // Writer active flag
     size_t position = m_ActiveFlagPosition;
-    const char activeChar = helper::ReadValue<uint8_t>(
-        buffer, position, m_Minifooter.IsLittleEndian);
+    const char activeChar = helper::ReadValue<uint8_t>(buffer, position);
     m_WriterIsActive = (activeChar == '\1' ? true : false);
     return m_WriterIsActive;
 }

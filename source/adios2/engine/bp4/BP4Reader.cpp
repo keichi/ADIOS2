@@ -317,8 +317,11 @@ MetadataExpectedMinFileSize(const format::BP4Deserializer &m_BP4Deserializer,
         // no (new) step entry in the index, so no metadata is expected
         return 0;
     }
-    uint64_t lastpos = *(uint64_t *)&(
-        m_BP4Deserializer.m_MetadataIndex.m_Buffer[idxsize - 24]);
+
+    size_t position = idxsize - 24;
+    uint64_t lastpos = helper::ReadValue<uint64_t>(
+        m_BP4Deserializer.m_MetadataIndex.m_Buffer, position,
+        m_BP4Deserializer.m_Minifooter.IsLittleEndian);
     return lastpos;
 }
 
@@ -326,7 +329,7 @@ void BP4Reader::InitBuffer(const TimePoint &timeoutInstant,
                            const Seconds &pollSeconds,
                            const Seconds &timeoutSeconds)
 {
-    // Put all metadata in buffer
+    // Read metadata index table into memory
     if (m_BP4Deserializer.m_RankMPI == 0)
     {
         /* Read metadata index table into memory */
@@ -338,7 +341,18 @@ void BP4Reader::InitBuffer(const TimePoint &timeoutInstant,
         m_MDIndexFileManager.ReadFile(
             m_BP4Deserializer.m_MetadataIndex.m_Buffer.data(),
             metadataIndexFileSize);
+        m_MDIndexFileProcessedSize = metadataIndexFileSize;
+    }
 
+    // broadcast metadata index buffer to all ranks from zero
+    m_Comm.BroadcastVector(m_BP4Deserializer.m_MetadataIndex.m_Buffer);
+
+    // Parse metadata index table
+    m_BP4Deserializer.ParseMetadataIndex(m_BP4Deserializer.m_MetadataIndex);
+
+    // Read metadata into memory
+    if (m_BP4Deserializer.m_RankMPI == 0)
+    {
         /* Read metadata file into memory but first make sure
          * it has the content that the index table refers to */
         uint64_t expectedMinFileSize =
@@ -362,7 +376,6 @@ void BP4Reader::InitBuffer(const TimePoint &timeoutInstant,
 
             m_MDFileManager.ReadFile(
                 m_BP4Deserializer.m_Metadata.m_Buffer.data(), fileSize);
-            m_MDIndexFileProcessedSize = metadataIndexFileSize;
         }
         else
         {
@@ -376,12 +389,6 @@ void BP4Reader::InitBuffer(const TimePoint &timeoutInstant,
     }
     // broadcast buffer to all ranks from zero
     m_Comm.BroadcastVector(m_BP4Deserializer.m_Metadata.m_Buffer);
-
-    // broadcast metadata index buffer to all ranks from zero
-    m_Comm.BroadcastVector(m_BP4Deserializer.m_MetadataIndex.m_Buffer);
-
-    /* Parse metadata index table */
-    m_BP4Deserializer.ParseMetadataIndex(m_BP4Deserializer.m_MetadataIndex);
 
     // fills IO with Variables and Attributes
     m_MDFileProcessedSize =
@@ -505,9 +512,6 @@ void BP4Reader::ProcessMetadataForNewSteps(const size_t newIdxSize)
     {
         m_MDIndexFileProcessedSize += newIdxSize;
     }
-    size_t idxsize = m_BP4Deserializer.m_MetadataIndex.m_Buffer.size();
-    uint64_t lastpos = *(uint64_t *)&(
-        m_BP4Deserializer.m_MetadataIndex.m_Buffer[idxsize - 24]);
 }
 
 bool BP4Reader::CheckWriterActive()
