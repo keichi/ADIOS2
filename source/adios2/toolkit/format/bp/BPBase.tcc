@@ -288,7 +288,7 @@ inline void BPBase::ParseCharacteristics(const std::vector<char> &buffer,
         {
             // first get the number of subblocks
             const uint16_t subBlocks =
-                helper::ReadValue<uint16_t>(buffer, position);
+                helper::ReadValue<uint16_t>(buffer, position, isLittleEndian);
             // block-level min/max
             characteristics.Statistics.Min =
                 helper::ReadValue<T>(buffer, position, isLittleEndian);
