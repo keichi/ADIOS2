@@ -682,15 +682,15 @@ BP4Serializer::DeserializeIndicesPerRankSingleThread(
 
     while (serializedPosition < serializedSize - 4)
     {
-        const int rankSource = static_cast<int>(
-            helper::ReadValue<uint32_t>(serialized, serializedPosition));
+        const int rankSource = static_cast<int>(helper::ReadValue<uint32_t>(
+            serialized, serializedPosition, helper::IsLittleEndian()));
 
         if (serializedPosition <= serializedSize)
         {
             size_t localPosition = serializedPosition;
 
-            ElementIndexHeader header =
-                ReadElementIndexHeader(serialized, localPosition);
+            ElementIndexHeader header = ReadElementIndexHeader(
+                serialized, localPosition, helper::IsLittleEndian());
 
             if (!isRankConstant || deserialized.count(header.Name) != 1)
             {
@@ -723,8 +723,9 @@ BP4Serializer::DeserializeIndicesPerRankSingleThread(
             }
         }
 
-        const size_t bufferSize = static_cast<size_t>(
-            helper::ReadValue<uint32_t>(serialized, serializedPosition));
+        const size_t bufferSize =
+            static_cast<size_t>(helper::ReadValue<uint32_t>(
+                serialized, serializedPosition, helper::IsLittleEndian()));
         serializedPosition += bufferSize;
     }
 
@@ -749,8 +750,8 @@ BP4Serializer::DeserializeIndicesPerRankThreads(
                               const size_t serializedPosition,
                               const bool isRankConstant) {
         size_t localPosition = serializedPosition;
-        ElementIndexHeader header =
-            ReadElementIndexHeader(serialized, localPosition);
+        ElementIndexHeader header = ReadElementIndexHeader(
+            serialized, localPosition, helper::IsLittleEndian());
 
         if (isRankConstant)
         {
@@ -807,13 +808,14 @@ BP4Serializer::DeserializeIndicesPerRankThreads(
                 break;
             }
 
-            const int rankSource = static_cast<int>(
-                helper::ReadValue<uint32_t>(serialized, serializedPosition));
+            const int rankSource = static_cast<int>(helper::ReadValue<uint32_t>(
+                serialized, serializedPosition, helper::IsLittleEndian()));
             asyncRankSources[t] = rankSource;
             asyncPositions[t] = serializedPosition;
 
-            const size_t bufferSize = static_cast<size_t>(
-                helper::ReadValue<uint32_t>(serialized, serializedPosition));
+            const size_t bufferSize =
+                static_cast<size_t>(helper::ReadValue<uint32_t>(
+                    serialized, serializedPosition, helper::IsLittleEndian()));
             serializedPosition += bufferSize;
 
             if (launched)
@@ -1026,7 +1028,6 @@ void BP4Serializer::AggregateCollectiveMetadataIndices(helper::Comm const &comm,
 
     {
         const DataTypes dataTypeEnum = static_cast<DataTypes>(dataType);
-        const bool isLittleEndian = helper::IsLittleEndian();
 
         switch (dataTypeEnum)
         {
@@ -1035,7 +1036,8 @@ void BP4Serializer::AggregateCollectiveMetadataIndices(helper::Comm const &comm,
     case (TypeTraits<T>::type_enum):                                           \
     {                                                                          \
         const auto characteristics = ReadElementIndexCharacteristics<T>(       \
-            buffer, position, TypeTraits<T>::type_enum, true, isLittleEndian); \
+            buffer, position, TypeTraits<T>::type_enum, true,                  \
+            helper::IsLittleEndian());                                         \
         count = characteristics.EntryCount;                                    \
         length = characteristics.EntryLength;                                  \
         timeStep = characteristics.Statistics.Step;                            \
@@ -1048,7 +1050,8 @@ void BP4Serializer::AggregateCollectiveMetadataIndices(helper::Comm const &comm,
         {
             const auto characteristics =
                 ReadElementIndexCharacteristics<std::string>(
-                    buffer, position, type_string_array, true, isLittleEndian);
+                    buffer, position, type_string_array, true,
+                    helper::IsLittleEndian());
             count = characteristics.EntryCount;
             length = characteristics.EntryLength;
             timeStep = characteristics.Statistics.Step;
@@ -1318,7 +1321,8 @@ void BP4Serializer::AggregateCollectiveMetadataIndices(helper::Comm const &comm,
                             std::get<0>(pair.second[0]);
                         size_t localPosition = headerStartPosition;
                         ElementIndexHeader header =
-                            ReadElementIndexHeader(serialized, localPosition);
+                            ReadElementIndexHeader(serialized, localPosition,
+                                                   helper::IsLittleEndian());
                         size_t headerSize = localPosition - headerStartPosition;
 
                         position += headerSize; // skip the header
@@ -1428,19 +1432,18 @@ void BP4Serializer::AggregateCollectiveMetadataIndices(helper::Comm const &comm,
         const std::vector<char> &serialized = inBufferSTL.m_Buffer;
         size_t serializedPosition = 0;
         std::vector<size_t> headerInfo(4);
-        const bool isLittleEndian = helper::IsLittleEndian();
 
         while (serializedPosition < serializedSize)
         {
             size_t localPosition = serializedPosition;
 
             const int rankSource = static_cast<int>(helper::ReadValue<uint32_t>(
-                serialized, localPosition, isLittleEndian));
+                serialized, localPosition, helper::IsLittleEndian()));
 
             for (auto i = 0; i < 4; ++i)
             {
                 headerInfo[i] = static_cast<size_t>(helper::ReadValue<uint64_t>(
-                    serialized, localPosition, isLittleEndian));
+                    serialized, localPosition, helper::IsLittleEndian()));
             }
 
             lf_LocateAllIndices(rankSource, headerInfo, serialized,
@@ -1541,7 +1544,8 @@ void BP4Serializer::MergeSerializeIndicesPerStep(
                 }
                 size_t &position = positions[r];
 
-                header = ReadElementIndexHeader(buffer, position);
+                header = ReadElementIndexHeader(buffer, position,
+                                                helper::IsLittleEndian());
                 firstRank = r;
 
                 headerSize = position;
@@ -1638,7 +1642,8 @@ void BP4Serializer::MergeSerializeIndicesPerStep(
             }
             size_t &position = positions[r];
 
-            header = ReadElementIndexHeader(buffer, position);
+            header = ReadElementIndexHeader(buffer, position,
+                                            helper::IsLittleEndian());
             firstRank = r;
 
             headerSize = position;
